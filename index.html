@@ -25,7 +25,9 @@
         }
     </script>
     
+    <!-- Library ສຳລັບອ່ານໄຟລ໌ Word -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
     <!-- ໃຊ້ Lucide Icons ສຳລັບໄອຄອນ -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -35,13 +37,16 @@
             color: black;
             font-family: 'Noto Sans Lao', 'Times New Roman', Times, serif;
             line-height: 1.6;
+            overflow-x: auto;
         }
         .doc-preview h1 { font-size: 1.8em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
         .doc-preview h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
         .doc-preview h3 { font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; margin-top: 1em; }
+        .doc-preview h4 { font-size: 1.1em; font-weight: bold; color: #2563eb; margin-top: 1em; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;}
         .doc-preview p { margin-bottom: 1em; }
-        .doc-preview table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; }
-        .doc-preview th, .doc-preview td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .doc-preview table { width: 100%; border-collapse: collapse; margin-bottom: 1.5em; white-space: nowrap; }
+        .doc-preview th, .doc-preview td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+        .doc-preview th { background-color: #f8fafc; font-weight: bold; }
         .doc-preview ul { list-style-type: disc; margin-left: 20px; margin-bottom: 1em; }
         .doc-preview ol { list-style-type: decimal; margin-left: 20px; margin-bottom: 1em; }
         
@@ -79,7 +84,9 @@
                     1. ອັບໂຫຼດເອກະສານ (Word)
                 </h2>
                 <div class="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                    <i data-lucide="file-text" class="w-10 h-10 mx-auto text-slate-400 mb-2"></i>
+                    <div class="flex justify-center space-x-2 mb-2">
+                        <i data-lucide="file-text" class="w-8 h-8 text-blue-500"></i>
+                    </div>
                     <p class="text-sm text-slate-600">ຄລິກເພື່ອເລືອກໄຟລ໌ Word</p>
                     <p class="text-xs text-slate-400 mt-1">ຮອງຮັບໄຟລ໌ .doc (97-2003) ແລະ .docx</p>
                     <input type="file" id="fileInput" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
@@ -127,6 +134,10 @@
                     <i data-lucide="sparkles" class="w-5 h-5 mr-2"></i>
                     ເລີ່ມຕົ້ນການແປພາສາ
                 </button>
+                <button id="stopTranslateBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg flex justify-center items-center transition-colors hidden">
+                    <i data-lucide="stop-circle" class="w-5 h-5 mr-2"></i>
+                    ຢຸດການແປ
+                </button>
                 <div id="loadingStatus" class="mt-4 text-sm text-slate-600 hidden text-center">
                     <i data-lucide="loader-2" class="w-5 h-5 mx-auto animate-spin text-blue-600 mb-1"></i>
                     ກຳລັງແປພາສາ ກະລຸນາລໍຖ້າຈັກໜ່ອຍ...
@@ -140,8 +151,8 @@
                     ແປສຳເລັດແລ້ວ!
                 </h2>
                 <button id="exportBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex justify-center items-center transition-colors">
-                    <i data-lucide="download" class="w-5 h-5 mr-2"></i>
-                    ດາວໂຫຼດເປັນເອກະສານ Word (.doc)
+                    <i id="exportIcon" data-lucide="download" class="w-5 h-5 mr-2"></i>
+                    <span id="exportBtnText">ດາວໂຫຼດເອກະສານ</span>
                 </button>
             </div>
 
@@ -204,9 +215,10 @@
         // 初始化 Lucide ໄອຄອນ
         lucide.createIcons();
 
-        // ຕົວປ່ຽນສຳລັບເກັບຂໍ້ມູນ HTML
+        // ຕົວປ່ຽນສຳລັບເກັບຂໍ້ມູນ HTML ແລະ ປະເພດໄຟລ໌
         let rawOriginalHtml = "";
         let finalTranslatedHtml = "";
+        let abortController = null; // ເພີ່ມຕົວຄວບຄຸມການຍົກເລີກການແປ
         const originalFileName = { name: "document" };
 
         // API Key (ປ່ອຍຫວ່າງໄວ້ຕາມກົດລະບຽບ, ລະບົບຈະໃສ່ໃຫ້ອັດຕະໂນມັດໃນສະພາບແວດລ້ອມການເຮັດວຽກ)
@@ -217,12 +229,15 @@
         const fileInfo = document.getElementById('fileInfo');
         const fileNameDisplay = document.getElementById('fileName');
         const translateBtn = document.getElementById('translateBtn');
+        const stopTranslateBtn = document.getElementById('stopTranslateBtn');
         const originalPreview = document.getElementById('originalPreview');
         const translatedPreview = document.getElementById('translatedPreview');
         const loadingStatus = document.getElementById('loadingStatus');
         const customPrompt = document.getElementById('customPrompt');
         const exportSection = document.getElementById('exportSection');
         const exportBtn = document.getElementById('exportBtn');
+        const exportBtnText = document.getElementById('exportBtnText');
+        const exportIcon = document.getElementById('exportIcon');
         const errorModal = document.getElementById('errorModal');
         const errorMessage = document.getElementById('errorMessage');
         const langDirectionElements = document.getElementsByName('langDirection');
@@ -247,7 +262,9 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            originalFileName.name = file.name.replace(/\.docx?$/, '');
+            originalFileName.name = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            
             fileNameDisplay.textContent = file.name;
             fileInfo.classList.remove('hidden');
             
@@ -256,44 +273,42 @@
             translatedPreview.innerHTML = '<div class="text-slate-400 text-center mt-20 flex flex-col items-center"><i data-lucide="languages" class="w-12 h-12 mb-2 opacity-50"></i>ຜົນການແປຈະສະແດງຢູ່ທີ່ນີ້</div>';
             lucide.createIcons();
 
+            exportBtnText.textContent = "ດາວໂຫຼດເປັນເອກະສານ Word (.doc)";
+            exportIcon.setAttribute("data-lucide", "file-text");
+            lucide.createIcons();
+
             // ແຈ້ງເຕືອນຖ້າເປັນໄຟລ໌ .doc ເກົ່າ
-            if (file.name.toLowerCase().endsWith('.doc')) {
+            if (fileExt === 'doc') {
                 showError("ໝາຍເຫດ: ໄຟລ໌ .doc (Word 97-2003) ເປັນຮູບແບບເກົ່າ. ຖ້າລະບົບສະແດງຜົນຜິດພາດ, ກະລຸນາເປີດໄຟລ໌ນີ້ໃນ MS Word ແລ້ວເລືອກ 'Save As' ເປັນ '.docx' ກ່ອນອັບໂຫຼດອີກຄັ້ງ.");
             }
 
             const reader = new FileReader();
-            
             reader.onload = function(event) {
                 const arrayBuffer = event.target.result;
-                
-                // ໃຊ້ Mammoth.js ເພື່ອປ່ຽນ .docx ເປັນ HTML ພ້ອມຮັກສາຮູບແບບ
+                // ໃຊ້ Mammoth.js ສຳລັບ Word
                 mammoth.convertToHtml({arrayBuffer: arrayBuffer})
                     .then(function(result) {
                         rawOriginalHtml = result.value; 
                         
-                        // ຖ້າເອກະສານຫວ່າງເປົ່າ
                         if (!rawOriginalHtml.trim()) {
                             showError("ບໍ່ພົບຂໍ້ຄວາມໃນເອກະສານນີ້ ຫຼື ຮູບແບບບໍ່ຮອງຮັບ (ອາດເປັນຍ້ອນໃຊ້ໄຟລ໌ .doc ເກົ່າ). ກະລຸນາແປງໄຟລ໌ເປັນ .docx ແລ້ວລອງໃໝ່.");
                             return;
                         }
-
-                        // ສະແດງຜົນໃນກ່ອງເບື້ອງຊ້າຍ
                         originalPreview.innerHTML = rawOriginalHtml;
                     })
                     .catch(function(err) {
-                        if (file.name.toLowerCase().endsWith('.doc')) {
+                        if (fileExt === 'doc') {
                             showError("ບໍ່ສາມາດອ່ານໄຟລ໌ .doc (Word 97-2003) ໄດ້! ກະລຸນາເປີດໃນ MS Word ແລ້ວ Save As ເປັນຮູບແບບ '.docx' ໃໝ່ລ່າສຸດ ກ່ອນນຳມາແປ.");
                         } else {
                             showError("ເກີດຂໍ້ຜິດພາດໃນການອ່ານໄຟລ໌ Word: " + err.message);
                         }
                     });
             };
-            
             reader.readAsArrayBuffer(file);
         });
 
         // ຟັງຊັນສຳລັບເອີ້ນໃຊ້ Gemini API ພ້ອມລະບົບ Retry 5 ຄັ້ງ
-        async function callGeminiAPI(systemInstruction, userText, retryCount = 0) {
+        async function callGeminiAPI(systemInstruction, userText, retryCount = 0, signal = null) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
             const payload = {
@@ -309,7 +324,8 @@
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
+                    signal: signal // ເພີ່ມ Signal ເພື່ອຮັບຄຳສັ່ງຢຸດການໂຫຼດ
                 });
 
                 if (!response.ok) {
@@ -324,16 +340,27 @@
                     throw new Error("ບໍ່ມີຂໍ້ມູນຕອບກັບຈາກ AI.");
                 }
             } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw error; // ຖ້າຖືກສັ່ງຍົກເລີກ ໃຫ້ສົ່ງ Error ຕໍ່ທັນທີ ບໍ່ຕ້ອງ Retry
+                }
+                
                 // Exponential Backoff Retry (1s, 2s, 4s, 8s, 16s)
                 if (retryCount < 5) {
                     const delay = Math.pow(2, retryCount) * 1000;
                     await new Promise(res => setTimeout(res, delay));
-                    return callGeminiAPI(systemInstruction, userText, retryCount + 1);
+                    return callGeminiAPI(systemInstruction, userText, retryCount + 1, signal);
                 } else {
                     throw error;
                 }
             }
         }
+
+        // ເມື່ອກົດປຸ່ມຢຸດການແປ
+        stopTranslateBtn.addEventListener('click', function() {
+            if (abortController) {
+                abortController.abort();
+            }
+        });
 
         // ເມື່ອກົດປຸ່ມແປພາສາ
         translateBtn.addEventListener('click', async function() {
@@ -342,8 +369,12 @@
                 return;
             }
 
+            // ສ້າງ AbortController ສຳລັບຍົກເລີກການແປ
+            abortController = new AbortController();
+
             // ປ່ຽນສະຖານະ UI
-            translateBtn.disabled = true;
+            translateBtn.classList.add('hidden');
+            stopTranslateBtn.classList.remove('hidden');
             loadingStatus.classList.remove('hidden');
             exportSection.classList.add('hidden');
             translatedPreview.innerHTML = '<div class="flex justify-center items-center h-full"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-500"></i></div>';
@@ -380,7 +411,8 @@ CRITICAL INSTRUCTIONS:
             const promptText = `Here is the HTML to translate from ${sourceLang} to ${targetLang}. Preserve all tags:\n\n${rawOriginalHtml}`;
 
             try {
-                let translatedText = await callGeminiAPI(systemPrompt, promptText);
+                // ສົ່ງ abortController.signal ເຂົ້າໄປໃນຟັງຊັນ
+                let translatedText = await callGeminiAPI(systemPrompt, promptText, 0, abortController.signal);
                 
                 // ອະນາໄມ Markdown (ຖ້າ AI ຍັງຄົງໃສ່ມາ)
                 translatedText = translatedText.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim();
@@ -394,21 +426,28 @@ CRITICAL INSTRUCTIONS:
                 exportSection.classList.remove('hidden');
 
             } catch (error) {
-                showError("ການແປລົ້ມເຫຼວ. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ.\nລາຍລະອຽດ: " + error.message);
-                translatedPreview.innerHTML = '<div class="text-red-400 text-center mt-20 flex flex-col items-center"><i data-lucide="alert-triangle" class="w-12 h-12 mb-2 opacity-50"></i>ການແປລົ້ມເຫຼວ</div>';
+                if (error.name === 'AbortError') {
+                    // ແຈ້ງເຕືອນກໍລະນີຜູ້ໃຊ້ກົດຢຸດເອງ
+                    translatedPreview.innerHTML = '<div class="text-slate-400 text-center mt-20 flex flex-col items-center"><i data-lucide="stop-circle" class="w-12 h-12 mb-2 text-red-400"></i>ການແປຖືກຍົກເລີກແລ້ວ</div>';
+                } else {
+                    showError("ການແປລົ້ມເຫຼວ. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ.\nລາຍລະອຽດ: " + error.message);
+                    translatedPreview.innerHTML = '<div class="text-red-400 text-center mt-20 flex flex-col items-center"><i data-lucide="alert-triangle" class="w-12 h-12 mb-2 opacity-50"></i>ການແປລົ້ມເຫຼວ</div>';
+                }
                 lucide.createIcons();
             } finally {
                 // ກັບຄືນສະຖານະ UI
-                translateBtn.disabled = false;
+                translateBtn.classList.remove('hidden');
+                stopTranslateBtn.classList.add('hidden');
                 loadingStatus.classList.add('hidden');
+                abortController = null;
             }
         });
 
-        // ຟັງຊັນສຳລັບ Export HTML ເປັນໄຟລ໌ MS Word (.doc)
+        // ຟັງຊັນສຳລັບ Export ໄຟລ໌
         exportBtn.addEventListener('click', function() {
             if (!finalTranslatedHtml) return;
 
-            // ສ້າງໂຄງສ້າງ HTML ທີ່ MS Word ສາມາດອ່ານໄດ້ ພ້ອມຕັ້ງຄ່າ Font
+            // Export ເປັນ Word
             const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
                            "xmlns:w='urn:schemas-microsoft-com:office:word' " +
                            "xmlns='http://www.w3.org/TR/REC-html40'>" +
@@ -418,12 +457,10 @@ CRITICAL INSTRUCTIONS:
             const footer = "</body></html>";
             const sourceHTML = header + finalTranslatedHtml + footer;
             
-            // ສ້າງ Blob ປະເພດ Word
             const blob = new Blob(['\ufeff', sourceHTML], {
                 type: 'application/msword'
             });
             
-            // ສ້າງ Link ສຳລັບດາວໂຫຼດ
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
