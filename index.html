@@ -88,8 +88,8 @@
                         <i data-lucide="file-text" class="w-8 h-8 text-blue-500"></i>
                     </div>
                     <p class="text-sm text-slate-600">ຄລິກເພື່ອເລືອກໄຟລ໌ Word</p>
-                    <p class="text-xs text-slate-400 mt-1">ຮອງຮັບໄຟລ໌ .doc (97-2003) ແລະ .docx</p>
-                    <input type="file" id="fileInput" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+                    <p class="text-xs text-slate-400 mt-1">ຮອງຮັບສະເພາະໄຟລ໌ .docx ເທົ່ານັ້ນ</p>
+                    <input type="file" id="fileInput" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
                 </div>
                 <div id="fileInfo" class="mt-3 text-sm text-green-600 font-medium hidden flex items-center">
                     <i data-lucide="check-circle" class="w-4 h-4 mr-1"></i>
@@ -270,17 +270,10 @@
             
             // ເຊື່ອງກ່ອງ Export ຖ້າມີການອັບໂຫຼດໄຟລ໌ໃໝ່
             exportSection.classList.add('hidden');
-            translatedPreview.innerHTML = '<div class="text-slate-400 text-center mt-20 flex flex-col items-center"><i data-lucide="languages" class="w-12 h-12 mb-2 opacity-50"></i>ຜົນການແປຈະສະແດງຢູ່ທີ່ນີ້</div>';
-            lucide.createIcons();
+            // ໃຊ້ inline SVG ແທນ lucide.createIcons() ເພື່ອຫຼຸດການປະມວນຜົນ DOM ສຳລັບເອກະສານໃຫຍ່ໆ (ໄວຂຶ້ນຫຼາຍ)
+            translatedPreview.innerHTML = '<div class="text-slate-400 text-center mt-20 flex flex-col items-center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 mb-2 opacity-50"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>ຜົນການແປຈະສະແດງຢູ່ທີ່ນີ້</div>';
 
             exportBtnText.textContent = "ດາວໂຫຼດເປັນເອກະສານ Word (.doc)";
-            exportIcon.setAttribute("data-lucide", "file-text");
-            lucide.createIcons();
-
-            // ແຈ້ງເຕືອນຖ້າເປັນໄຟລ໌ .doc ເກົ່າ
-            if (fileExt === 'doc') {
-                showError("ໝາຍເຫດ: ໄຟລ໌ .doc (Word 97-2003) ເປັນຮູບແບບເກົ່າ. ຖ້າລະບົບສະແດງຜົນຜິດພາດ, ກະລຸນາເປີດໄຟລ໌ນີ້ໃນ MS Word ແລ້ວເລືອກ 'Save As' ເປັນ '.docx' ກ່ອນອັບໂຫຼດອີກຄັ້ງ.");
-            }
 
             const reader = new FileReader();
             reader.onload = function(event) {
@@ -291,17 +284,13 @@
                         rawOriginalHtml = result.value; 
                         
                         if (!rawOriginalHtml.trim()) {
-                            showError("ບໍ່ພົບຂໍ້ຄວາມໃນເອກະສານນີ້ ຫຼື ຮູບແບບບໍ່ຮອງຮັບ (ອາດເປັນຍ້ອນໃຊ້ໄຟລ໌ .doc ເກົ່າ). ກະລຸນາແປງໄຟລ໌ເປັນ .docx ແລ້ວລອງໃໝ່.");
+                            showError("ບໍ່ພົບຂໍ້ຄວາມໃນເອກະສານນີ້ ຫຼື ຮູບແບບບໍ່ຮອງຮັບ.");
                             return;
                         }
                         originalPreview.innerHTML = rawOriginalHtml;
                     })
                     .catch(function(err) {
-                        if (fileExt === 'doc') {
-                            showError("ບໍ່ສາມາດອ່ານໄຟລ໌ .doc (Word 97-2003) ໄດ້! ກະລຸນາເປີດໃນ MS Word ແລ້ວ Save As ເປັນຮູບແບບ '.docx' ໃໝ່ລ່າສຸດ ກ່ອນນຳມາແປ.");
-                        } else {
-                            showError("ເກີດຂໍ້ຜິດພາດໃນການອ່ານໄຟລ໌ Word: " + err.message);
-                        }
+                        showError("ເກີດຂໍ້ຜິດພາດໃນການອ່ານໄຟລ໌ Word: " + err.message);
                     });
             };
             reader.readAsArrayBuffer(file);
@@ -377,8 +366,8 @@
             stopTranslateBtn.classList.remove('hidden');
             loadingStatus.classList.remove('hidden');
             exportSection.classList.add('hidden');
-            translatedPreview.innerHTML = '<div class="flex justify-center items-center h-full"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-500"></i></div>';
-            lucide.createIcons();
+            // ໃຊ້ inline SVG ເພື່ອບໍ່ຕ້ອງ render ໄອຄອນໃໝ່ທັງໜ້າ
+            translatedPreview.innerHTML = '<div class="flex justify-center items-center h-full"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 animate-spin text-blue-500"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>';
 
             // ກວດສອບທິດທາງການແປ
             let selectedDirection = 'lo2en';
@@ -428,12 +417,11 @@ CRITICAL INSTRUCTIONS:
             } catch (error) {
                 if (error.name === 'AbortError') {
                     // ແຈ້ງເຕືອນກໍລະນີຜູ້ໃຊ້ກົດຢຸດເອງ
-                    translatedPreview.innerHTML = '<div class="text-slate-400 text-center mt-20 flex flex-col items-center"><i data-lucide="stop-circle" class="w-12 h-12 mb-2 text-red-400"></i>ການແປຖືກຍົກເລີກແລ້ວ</div>';
+                    translatedPreview.innerHTML = '<div class="text-slate-400 text-center mt-20 flex flex-col items-center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 mb-2 text-red-400"><circle cx="12" cy="12" r="10"/><rect width="6" height="6" x="9" y="9"/></svg>ການແປຖືກຍົກເລີກແລ້ວ</div>';
                 } else {
                     showError("ການແປລົ້ມເຫຼວ. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ.\nລາຍລະອຽດ: " + error.message);
-                    translatedPreview.innerHTML = '<div class="text-red-400 text-center mt-20 flex flex-col items-center"><i data-lucide="alert-triangle" class="w-12 h-12 mb-2 opacity-50"></i>ການແປລົ້ມເຫຼວ</div>';
+                    translatedPreview.innerHTML = '<div class="text-red-400 text-center mt-20 flex flex-col items-center"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 mb-2 opacity-50"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>ການແປລົ້ມເຫຼວ</div>';
                 }
-                lucide.createIcons();
             } finally {
                 // ກັບຄືນສະຖານະ UI
                 translateBtn.classList.remove('hidden');
